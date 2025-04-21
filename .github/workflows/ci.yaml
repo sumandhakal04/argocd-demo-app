@@ -1,0 +1,79 @@
+name: Build and Update
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+  AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  CI_ACCESS_TOKEN: ${{ secrets.CI_ACCESS_TOKEN }}
+  K8S_REPO_URL: ${{ secrets.K8S_REPO_URL }}
+  K8S_SERVICE_PATH: apps/example-app/overlays
+
+jobs:
+  build-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set short SHA
+        id: vars
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: GitHubActions
+      
+      - name: Authenticate with ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: $SHORT_SHA
+        run: |
+          docker build -t $DOCKER_REGISTRY:$IMAGE_TAG .
+          docker push $REGISTRY:$IMAGE_TAG
+
+  update-manifests:
+    name: Update Kustomize Manifest
+    runs-on: ubuntu-latest
+    needs: build-push
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apk add --no-cache git yq || sudo apt-get update && sudo apt-get install -y git yq
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "GitHub Actions"
+
+      - name: Clone Kubernetes repo
+        run: |
+          git clone https://oauth2:$CI_ACCESS_TOKEN@K8S_REPO_URL" argocd
+          cd argocd/${K8S_SERVICE_PATH}
+
+          if [[ "${GITHUB_REF##*/}" == "dev" ]]; then OVERLAY="dev"; fi
+          if [[ "${GITHUB_REF##*/}" == "main" ]]; then OVERLAY="prod"; fi
+
+          echo "Updating image tag in $OVERLAY overlay..."
+          yq eval -i '(.images.[] | select(.name == "123456789012.dkr.ecr.eu-west-3.amazonaws.com/example-app").newTag) = env(SHORT_SHA)' $OVERLAY/kustomization.yaml
+
+          git add .
+          git commit -m "Update app image tag to ${SHORT_SHA} in $OVERLAY"
+          git push origin HEAD:${GITHUB_REF##*/}
