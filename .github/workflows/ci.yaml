@@ -49,18 +49,6 @@ jobs:
           docker build -t $DOCKER_REGISTRY:$IMAGE_TAG .
           docker push $REGISTRY:$IMAGE_TAG
 
-      - name: Build and push image
-        id: build-push
-        with:
-          image: gcr.io/kaniko-project/executor:latest
-          options: --entrypoint ""  
-        run: |
-          /kaniko/executor \
-            --context "${GITHUB_WORKSPACE}" \
-            --dockerfile "${GITHUB_WORKSPACE}/dockerfile" \
-            --destination "${IMAGE_NAME}:${SHORT_SHA}" \
-            --destination "${IMAGE_NAME}:latest"
-
   update-manifests:
     name: Update Kustomize Manifest
     runs-on: ubuntu-latest
