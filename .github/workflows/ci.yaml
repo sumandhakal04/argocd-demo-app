@@ -72,7 +72,7 @@ jobs:
           if [[ "${GITHUB_REF##*/}" == "main" ]]; then OVERLAY="prod"; fi
 
           echo "Updating image tag in $OVERLAY overlay..."
-          yq eval -i '(.images.[] | select(.name == "123456789012.dkr.ecr.eu-west-3.amazonaws.com/example-app").newTag) = env(SHORT_SHA)' $OVERLAY/kustomization.yaml
+          yq eval -i '(.images.[] | select(.name == env (DOCKER_REGISTRY).newTag) = env(SHORT_SHA)' $OVERLAY/kustomization.yaml
 
           git add .
           git commit -m "Update app image tag to ${SHORT_SHA} in $OVERLAY"
