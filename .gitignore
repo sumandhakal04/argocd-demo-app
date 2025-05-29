@@ -1,0 +1,29 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore Node dependencies (if applicable)
+node_modules/
+
+# Ignore local IDE/editor settings
+.vscode/
+.idea/
+*.sw?
+
+# Ignore Kustomize build artifacts
+*.generated.yaml
+
+# Ignore Kubernetes secrets or temp files
+secrets.yaml
+*.bak
+*.tmp
+
+# Ignore logs
+*.log
+
+# Ignore Terraform state if used in future
+*.tfstate
+*.tfstate.backup
+
+# Ignore Helm chart lock files (if Helm is added)
+Chart.lock
