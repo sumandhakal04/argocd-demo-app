@@ -34,6 +34,8 @@ You can open the app locally by simply opening `index.html` in your browser:
 ```bash
 open index.html
 
+```
+
 ## Related Repositories
 
 - https://github.com/sumandhakal04/beyond-kubernetes
